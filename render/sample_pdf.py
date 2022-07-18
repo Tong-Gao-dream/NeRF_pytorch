@@ -4,6 +4,11 @@ import numpy as np
 def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
     # Get pdf
     # Hierarchical sampling (section 5.2)
+
+    # Hierarchical sampling helper
+    # Get pdf
+    # PDF：是英文单词 probability density function 的缩写，翻译过来是指概率密度函数，
+    # 是用来描述连续型随机变量的输出值，在某个确定的取值点附近的可能性的大小的函数。
     weights = weights + 1e-5 # prevent nans
     pdf = weights / torch.sum(weights, -1, keepdim=True)
     cdf = torch.cumsum(pdf, -1)
@@ -28,6 +33,8 @@ def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
         u = torch.Tensor(u)
 
     # Invert CDF
+    # CDF : 是英文单词 cumulative distribution function 的缩写，翻译过来是指累积分布函数，
+    # 又叫分布函数，是概率密度函数的积分，用来表示离散型随机变量x的概率分布。
     u = u.contiguous()
     inds = torch.searchsorted(cdf, u, right=True)
     below = torch.max(torch.zeros_like(inds-1), inds-1)

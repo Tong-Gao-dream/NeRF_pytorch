@@ -12,7 +12,7 @@ from model.NeRF import NeRF
 from utils.utils import batchify
 
 basedir = './logs'
-expname = 'fern_test'
+expname = 'vasedeck'
 
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
@@ -23,13 +23,14 @@ print(open(config, 'r').read())
 parser = config_parser()
 args = parser.parse_args()
 
-ft_str = '--ft_path {}'.format(os.path.join(basedir, expname, '010000.tar'))
+ft_str = '--ft_path {}'.format(os.path.join(basedir, expname, '040000.tar'))
 args = parser.parse_args('--config {} '.format(config) + ft_str)
 
-N = 256
+# N = 256
+N = 128
 
-threshold = 50.
-t = np.linspace(-1.2, 1.2, N + 1)
+threshold = 10.
+t = np.linspace(-1.6, 1.6, N + 1)
 
 query_pts = np.stack(np.meshgrid(t, t, t), -1).astype(np.float32)
 print('query_pts.shape', query_pts.shape)

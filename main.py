@@ -65,12 +65,19 @@ def train():
         print('NEAR FAR', near, far)
 
     elif args.dataset_type == 'blender':
+        # hwf表示图片的宽高、焦距；image表示图片中每一个像素的颜色；pose所有图片的位姿，4*4的矩阵；i_split 训练、验证、测试集是如何划分的、
         images, poses, render_poses, hwf, i_split = load_blender_data(args.datadir, args.half_res, args.testskip)
         print('Loaded blender', images.shape, render_poses.shape, hwf, args.datadir)
         i_train, i_val, i_test = i_split
 
+        # NeRF渲染过程中，光线射线上近的点和远的点的边界在哪里，因为渲染过程中不能取射线上所有的点，射线是无限长的
+
         near = 2.
         far = 6.
+
+        # 原文中粗采样点为64、细采样点为192，总共的采样点为256
+        # 要给神经网络送入1024*256个点，1024表示光线数量，256表示采样点数量
+        # 但是由于1024*256太大，GPU吃不下，所以将其拆成1024*32
 
         if args.white_bkgd:
             images = images[..., :3] * images[..., -1:] + (1. - images[..., -1:])
@@ -122,6 +129,7 @@ def train():
         render_poses = np.array(poses[i_test])
 
     # Create log dir and copy the config file
+    # 创建训练过程中的log
     basedir = args.basedir
     expname = args.expname
     os.makedirs(os.path.join(basedir, expname), exist_ok=True)
@@ -134,6 +142,7 @@ def train():
         f = os.path.join(basedir, expname, 'config.txt')
         with open(f, 'w') as file:
             file.write(open(args.config, 'r').read())
+    # 截至到上面，是在读数据，做准备工作
 
     # Create nerf model
     render_kwargs_train, render_kwargs_test, start, grad_vars, optimizer = create_nerf(args)
@@ -177,7 +186,18 @@ def train():
     use_batching = not args.no_batching
     if use_batching:
         # For random ray batching
+        # 下一行中，N表示图片数量；H、W表示图片尺寸
+        # Constructs an array 'rays_rgb' of shape [N*H*W, 3, 3] where axis=1 is
+        # interpreted as,
+        #   axis=0: ray origin in world space 像素原点
+        #   axis=1: ray direction in world space 像素方向
+        #   axis=2: observed RGB color of pixel
         print('get rays')
+        # get_rays_np() returns rays_origin=[H, W, 3], rays_direction=[H, W, 3]
+        # for each pixel in the images. This stack() adds a new dimension.
+
+        # 通过get_rays_np获取了所有射线在世界坐标系中的原点位置与光线方向
+
         rays = np.stack([get_rays_np(H, W, K, p) for p in poses[:, :3, :4]], 0)  # [N, ro+rd, H, W, 3]
         print('done, concats')
         rays_rgb = np.concatenate([rays, images[:, None]], 1)  # [N, ro+rd+rgb, H, W, 3]
