@@ -1,5 +1,5 @@
 import torch
-from render.get_rays import get_rays
+from .get_rays import get_rays
 from utils.ndc_rays import ndc_rays
 from .batchify_rays import batchify_rays
 
