@@ -109,4 +109,9 @@ def config_parser():
     parser.add_argument("--i_video", type=int, default=50000,
                         help='frequency of render_poses video saving')
 
+    # depth supervision
+
+    parser.add_argument("render_only_ds")
+
+
     return parser
