@@ -12,13 +12,19 @@ DEBUG = False
 
 
 def create_nerf(args):
-    """Instantiate NeRF's MLP model.
-    """
+    """Instantiate NeRF's MLP model."""
+
+    # 首先进行位置编码
     embed_fn, input_ch = get_embedder(args.multires, args.i_embed)
+
+
 
     input_ch_views = 0
     embeddirs_fn = None
     if args.use_viewdirs:
+
+        # 模拟反光，考虑到高光部分会随视角的改变而改变
+
         embeddirs_fn, input_ch_views = get_embedder(args.multires_views, args.i_embed)
     output_ch = 5 if args.N_importance > 0 else 4
     skips = [4]

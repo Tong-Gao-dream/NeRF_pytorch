@@ -38,7 +38,7 @@ def render(H, W, K, chunk=1024*32, rays=None, c2w=None, ndc=True,
 
     if use_viewdirs:
         # provide ray directions as input
-        viewdirs = rays_d
+        viewdirs = rays_d #每个像素的视角
         if c2w_staticcam is not None:
             # special case to visualize effect of viewdirs
             rays_o, rays_d = get_rays(H, W, K, c2w_staticcam)

@@ -84,6 +84,10 @@ def train():
         # 但是由于1024*256太大，GPU吃不下，所以将其拆成1024*32
 
         if args.white_bkgd:
+            # image shape为 （400，800，800，4）blender
+            # 如果images[..., -1] = 1(opaque)有物体非透明
+            # 如果是RGB不改变
+            # 如果images[...,-1]=0(transparent)变成1，将透明变成白色
             images = images[..., :3] * images[..., -1:] + (1. - images[..., -1:])
         else:
             images = images[..., :3]
@@ -253,7 +257,7 @@ def train():
     use_batching = not args.no_batching
     if use_batching:
         # For random ray batching
-        # 下一行中，N表示图片数量；表示图片H、W尺寸
+        # 下一行中，N表示图片数量；表示图片H、W尺寸,从多张图皮中取出像素，将所有像素平等对待。not_use_batching表示在一张图片中取像素作为输入
         # Constructs an array 'rays_rgb' of shape [N*H*W, 3, 3] where axis=1 is
         # interpreted as,
         #   axis=0: ray origin in world space 像素原点
@@ -264,10 +268,15 @@ def train():
         # for each pixel in the images. This stack() adds a new dimension.
 
         # 通过get_rays_np获取了所有射线在世界坐标系中的原点位置与光线方向
+        # 从形式上来讲MLP的输入并不是真正的点的三维坐标  ，
+        # 而是由像素坐标经过相机外参变换得到的光线始发点与方向向量以及不同的深度值构成的，
+        # 而方位的输入也并不是  ，
+        # 而是经过标准化的光线方向。https://zhuanlan.zhihu.com/p/495652881
 
         rays = np.stack([get_rays_np(H, W, K, p) for p in poses[:, :3, :4]], 0)  # [N, ro+rd, H, W, 3]
         print('done, concats')
-        rays_rgb = np.concatenate([rays, images[:, None]], 1)  # [N, ro+rd+rgb, H, W, 3]
+        # image = (N, H, W, 3)
+        rays_rgb = np.concatenate([rays, images[:, None]], 1)  # [N, ro+rd+rgb, H, W, 3] None是多加一个维度
         rays_rgb = np.transpose(rays_rgb, [0, 2, 3, 1, 4])  # [N, H, W, ro+rd+rgb, 3]
         rays_rgb = np.stack([rays_rgb[i] for i in i_train], 0)  # train images only
         rays_rgb = np.reshape(rays_rgb, [-1, 3, 3])  # [(N-1)*H*W, ro+rd+rgb, 3]
@@ -285,7 +294,7 @@ def train():
     if use_batching:
         rays_rgb = torch.Tensor(rays_rgb).to(device)
 
-    N_iters = 200000 + 1
+    N_iters = 2_00_000 + 1
     print('Begin')
     print('TRAIN views are', i_train)
     print('TEST views are', i_test)
@@ -320,6 +329,7 @@ def train():
             pose = poses[img_i, :3, :4]
 
             if N_rand is not None:
+                # 对光线进行预处理 get_rays()
                 rays_o, rays_d = get_rays(H, W, K, torch.Tensor(pose))  # (H, W, 3), (H, W, 3)
 
                 if i < args.precrop_iters:
@@ -356,6 +366,8 @@ def train():
         loss = img_loss
         psnr = mse2psnr(img_loss)
 
+
+        # 计算第一阶段(粗网络)采样点的loss
         if 'rgb0' in extras:
             img_loss0 = img2mse(extras['rgb0'], target_s)
             loss = loss + img_loss0
